@@ -1,233 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Student Final Score (G3) Prediction</title>
-  <style>
-    :root {
-      --primary: #4361ee;
-      --success: #4cc9f0;
-      --warning: #f72585;
-      --light: #f8f9fa;
-      --dark: #212529;
-    }
-    
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      line-height: 1.6;
-      padding: 20px;
-      max-width: 600px;
-      margin: 0 auto;
-      background-color: #f0f2f5;
-      color: var(--dark);
-    }
+from flask import Flask, request, jsonify
+import joblib
+import pandas as pd
 
-    .card {
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      padding: 25px;
-      margin-top: 30px;
-    }
+# Initialize Flask app
+app = Flask(__name__)
 
-    h2 {
-      color: var(--primary);
-      text-align: center;
-      margin-bottom: 25px;
-      font-size: 28px;
-    }
+# Load the model and training columns
+model = joblib.load("xgboost_model.pkl")
+model_columns = joblib.load("model_columns.pkl")
 
-    .form-group {
-      margin-bottom: 20px;
-    }
+@app.route("/predict", methods=["POST"])
+def predict():
+    try:
+        data = request.get_json()
 
-    label {
-      display: block;
-      margin-bottom: 8px;
-      font-weight: 600;
-      color: var(--dark);
-    }
+        # Extract numeric and categorical fields
+        G1 = data["G1"]
+        G2 = data["G2"]
+        absences = data["absences"]
+        famrel = data["famrel"]
+        schoolsup = data["schoolsup"]
+        reason = data["reason"]
+        Fjob = data["Fjob"]
+        activities = data["activities"]
+        romantic = data["romantic"]
 
-    input, select {
-      width: 100%;
-      padding: 12px;
-      border: 2px solid #ddd;
-      border-radius: 6px;
-      font-size: 16px;
-      transition: border-color 0.3s;
-    }
+        # Calculate derived feature
+        G1_G2_avg = (G1 + G2) / 2
 
-    input:focus, select:focus {
-      border-color: var(--primary);
-      outline: none;
-    }
+        # Construct input DataFrame
+        input_df = pd.DataFrame([{
+            "G1_G2_avg": G1_G2_avg,
+            "G2": G2,
+            "absences": absences,
+            "famrel": famrel,
+            "schoolsup": schoolsup,
+            "reason": reason,
+            "Fjob": Fjob,
+            "activities": activities,
+            "romantic": romantic
+        }])
 
-    button {
-      width: 100%;
-      padding: 14px;
-      background-color: var(--primary);
-      color: white;
-      border: none;
-      border-radius: 6px;
-      font-size: 16px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: background-color 0.3s;
-      margin-top: 10px;
-    }
+        # One-hot encode categorical values
+        input_df = pd.get_dummies(input_df)
 
-    button:hover {
-      background-color: #3a56d4;
-    }
+        # Align with trained model columns
+        input_df = input_df.reindex(columns=model_columns, fill_value=0)
 
-    #result {
-      margin-top: 25px;
-      padding: 15px;
-      border-radius: 6px;
-      text-align: center;
-      font-size: 18px;
-      font-weight: 600;
-      display: none;
-    }
+        # Predict
+        prediction = model.predict(input_df)[0]
 
-    .success {
-      background-color: #e6f7ff;
-      color: var(--primary);
-      border-left: 4px solid var(--success);
-    }
+        # Return result
+        return jsonify({"predicted_G3": float(prediction)})
 
-    .error {
-      background-color: #fff0f3;
-      color: var(--warning);
-      border-left: 4px solid var(--warning);
-    }
+    except Exception as e:
+        return jsonify({"error": str(e)})
 
-    .input-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 15px;
-    }
-
-    .loading {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid rgba(255,255,255,.3);
-      border-radius: 50%;
-      border-top-color: white;
-      animation: spin 1s ease-in-out infinite;
-      margin-right: 10px;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-  </style>
-</head>
-<body>
-  <div class="card">
-    <h2>🎓 Student Final Score Predictor</h2>
-    
-    <div class="form-group input-grid">
-      <div>
-        <label for="G1">G1 Score (0-20)</label>
-        <input type="number" id="G1" min="0" max="20" value="10" required>
-      </div>
-      <div>
-        <label for="G2">G2 Score (0-20)</label>
-        <input type="number" id="G2" min="0" max="20" value="10" required>
-      </div>
-    </div>
-
-    <div class="form-group input-grid">
-      <div>
-        <label for="school">School</label>
-        <select id="school" required>
-          <option value="GP">GP</option>
-          <option value="MS">MS</option>
-        </select>
-      </div>
-      <div>
-        <label for="sex">Gender</label>
-        <select id="sex" required>
-          <option value="F">Female</option>
-          <option value="M">Male</option>
-        </select>
-      </div>
-    </div>
-
-    <button type="button" onclick="predict()" id="predictBtn">
-      <span id="btnText">Predict G3 Score</span>
-    </button>
-
-    <div id="result"></div>
-  </div>
-
-  <script>
-    async function predict() {
-      // Get form values
-      const G1 = parseInt(document.getElementById("G1").value);
-      const G2 = parseInt(document.getElementById("G2").value);
-      const school = document.getElementById("school").value;
-      const sex = document.getElementById("sex").value;
-
-      // Validate inputs
-      if (G1 < 0 || G1 > 20 || G2 < 0 || G2 > 20) {
-        showResult("Please enter scores between 0-20", "error");
-        return;
-      }
-
-      // Show loading state
-      const btn = document.getElementById("predictBtn");
-      const btnText = document.getElementById("btnText");
-      btn.disabled = true;
-      btnText.innerHTML = '<span class="loading"></span> Predicting...';
-
-      try {
-        // Prepare data (including G1_G2_avg as your model expects)
-        const data = {
-          G1: G1,
-          G2: G2,
-          school: school,
-          sex: sex,
-          G1_G2_avg: (G1 + G2) / 2  // Important: Match your model's requirements
-        };
-
-        const response = await fetch("http://127.0.0.1:5000/predict", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify(data)
-        });
-
-        const result = await response.json();
-        
-        // Display result with interpretation
-        let message = `Predicted G3 Score: ${Math.round(result.predicted_G3)}/20`;
-        if (result.predicted_G3 < 10) {
-          message += " (Needs improvement)";
-        } else if (result.predicted_G3 >= 16) {
-          message += " (Excellent!)";
-        }
-        
-        showResult(message, "success");
-      } catch (error) {
-        console.error("Prediction error:", error);
-        showResult("Prediction failed. Please try again.", "error");
-      } finally {
-        btn.disabled = false;
-        btnText.textContent = "Predict G3 Score";
-      }
-    }
-
-    function showResult(message, type) {
-      const resultDiv = document.getElementById("result");
-      resultDiv.textContent = message;
-      resultDiv.className = type;
-      resultDiv.style.display = "block";
-    }
-  </script>
-</body>
-</html>
+if __name__ == "__main__":
+    app.run(debug=True)
