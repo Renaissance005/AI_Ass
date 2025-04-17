@@ -105,7 +105,7 @@
         });
 
         const result = await response.json();
-        document.getElementById("result").innerText = `Predicted G3 Score: ${result.predicted_G3}`;
+        document.getElementById("result").innerText = `Predicted G3 Score: ${result.predicted_G3.toFixed(0)}`;
       } catch (error) {
         document.getElementById("result").innerText = "Prediction failed. Please try again.";
         console.error("Error:", error);
