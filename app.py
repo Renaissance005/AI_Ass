@@ -41,7 +41,7 @@ if submit:
     input_df = input_df.reindex(columns=model_columns, fill_value=0)
 
     prediction = model.predict(input_df)[0]
-    st.success(f"✅ Predicted G3 Score: {prediction:.2f}")
+    st.success(f"✅ Predicted G3 Score: {prediction:.2f} out of 20")
 
 if prediction >= 18:
         evaluation = "🏆 Outstanding performance! You're among the top students!"
