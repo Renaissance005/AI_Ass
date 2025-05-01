@@ -19,7 +19,7 @@ with st.form("prediction_form"):
     Fjob = st.selectbox("Father's Job", ["teacher", "health", "services", "at_home", "other"])
     activities = st.selectbox("Extra-curricular Activities", ["yes", "no"])
     romantic = st.selectbox("In a Romantic Relationship", ["yes", "no"])
-    submit = st.form_submit_button("Predict")
+    submit = st.form_submit_button("Predict Final Grade (G3)")
 
 # Prediction
 if submit:
@@ -42,3 +42,18 @@ if submit:
 
     prediction = model.predict(input_df)[0]
     st.success(f"✅ Predicted G3 Score: {prediction:.2f}")
+
+if prediction >= 18:
+        evaluation = "🏆 Outstanding performance! You're among the top students!"
+    elif prediction >= 15:
+        evaluation = "🌟 Excellent work! Keep maintaining this level."
+    elif prediction >= 12:
+        evaluation = "😊 Good job! You're doing well, a bit more effort for excellence."
+    elif prediction >= 10:
+        evaluation = "🙂 Passable. You passed, but there’s room to improve."
+    elif prediction >= 6:
+        evaluation = "⚠️ Below average. Consider focusing more on your studies."
+    else:
+        evaluation = "❌ Fail. Please seek help from your teachers or tutors."
+
+    st.info(f"Evaluation: {evaluation}")
