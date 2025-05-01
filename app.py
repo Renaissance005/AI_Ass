@@ -43,17 +43,17 @@ if submit:
     prediction = model.predict(input_df)[0]
     st.success(f"✅ Predicted G3 Score: {prediction:.2f} out of 20")
 
-if prediction >= 18:
-        evaluation = "🏆 Outstanding performance! You're among the top students!"
+    if prediction >= 18:
+        evaluation = "🌟 Excellent predicted performance! Keep up your outstanding study habits."
     elif prediction >= 15:
-        evaluation = "🌟 Excellent work! Keep maintaining this level."
+        evaluation = "👍 Good predicted score! Stay focused and keep working hard to maintain or improve."
     elif prediction >= 12:
-        evaluation = "😊 Good job! You're doing well, a bit more effort for excellence."
+        evaluation = "🙂 Decent predicted score. You have potential—consider strengthening weaker subjects."
     elif prediction >= 10:
-        evaluation = "🙂 Passable. You passed, but there’s room to improve."
+        evaluation = "📝 Passing predicted score. Try to review regularly to secure a stronger result."
     elif prediction >= 6:
-        evaluation = "⚠️ Below average. Consider focusing more on your studies."
+        evaluation = "⚠️ Below average predicted score. It may help to practice more or seek extra support."
     else:
-        evaluation = "❌ Fail. Please seek help from your teachers or tutors."
-
-    st.info(f"Evaluation: {evaluation}")
+        evaluation = "❗ Low predicted score. Consider speaking with a teacher and making a study plan."
+        
+    st.info(f"📢 Suggested Action: {evaluation}")
